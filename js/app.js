@@ -17,7 +17,7 @@ const DEF = () => ({
   diff: [], loop: { a: null, b: null, on: false },
   speed: 100, key: 0, vocals: true, lyricMode: 'all', vol: 85,
   syncMs: 0, grid: null, sections: null, lyrics: null,
-  snap: 0, shiftMs: 0,
+  snap: 0, shiftMs: 0, lyricSize: 100,
 });
 let S = DEF();
 let G, eng, LYR = { version: 1, lines: [] }, TL = [], SEC = [], BARS = 0;
@@ -212,7 +212,7 @@ function renderLyrics() {
     d.className = 'lrow';
     d.dataset.idx = idx;
     d.innerHTML = `<div class="en"></div><div class="zh"></div>`;
-    d.querySelector('.en').textContent = l.en || '♪';
+    paintWords(d.querySelector('.en'), l);
     d.querySelector('.zh').textContent = l.zh || '';
     if (l.t !== null) d.onclick = () => {
       // 先 seek（會清掉舊的強制高亮），再把高亮鎖在這一行：
@@ -231,6 +231,25 @@ function renderLyrics() {
   pad.addEventListener('pointerdown', () => { userScrollUntil = performance.now() + 2600; });
 }
 
+/** 把一句歌詞逐字塗上聲部顏色（男=藍 女=紅 合唱=綠） */
+function paintWords(el, line, onWord) {
+  el.textContent = '';
+  if (!line.en) { el.textContent = '♪'; return; }
+  for (const tok of Ly.words(line.en)) {
+    if (!tok.isWord) { el.append(tok.text); continue; }
+    const s = document.createElement('span');
+    const v = Ly.voiceOf(line, tok.wi);
+    s.className = 'w' + (v ? ' v-' + v : '');
+    s.textContent = tok.text;
+    if (onWord) {
+      s.dataset.wi = tok.wi;
+      s.classList.add('tap');
+      s.onclick = (e) => { e.stopPropagation(); onWord(tok.wi); };
+    }
+    el.append(s);
+  }
+}
+
 /** 依 TL 索引套用 cur / past / next 樣式（idx<0 表示還沒到第一句） */
 function paintLyricHighlight(idx) {
   const want = idx >= 0 && TL[idx] ? TL[idx].i : -1;
@@ -247,6 +266,83 @@ function paintLyricHighlight(idx) {
     if (e) e.classList.add('next');
   }
   curLine = want;
+  markVoiceRow();
+}
+
+// ---------------------------------------------------------------- 歌詞字級
+const FSZ_MIN = 60, FSZ_MAX = 220, FSZ_STEP = 10;
+function applyLyricSize() {
+  const v = Math.max(FSZ_MIN, Math.min(FSZ_MAX, S.lyricSize || 100));
+  S.lyricSize = v;
+  $('#lyricWrap').style.setProperty('--lyr-scale', (v / 100).toFixed(2));
+  $('#fszVal').textContent = v + '%';
+}
+function bumpLyricSize(d) {
+  S.lyricSize = Math.max(FSZ_MIN, Math.min(FSZ_MAX, (S.lyricSize || 100) + d * FSZ_STEP));
+  applyLyricSize(); save();
+  toast(`歌詞 ${S.lyricSize}%`);
+}
+
+// -------------------------------------------------------------- 聲部標註
+function renderVoiceList() {
+  const box = $('#voiceList');
+  const rows = textRows();
+  box.innerHTML = '';
+  if (!rows.length) {
+    box.innerHTML = '<p class="dim" style="padding:14px">先在「貼上歌詞」頁匯入歌詞。</p>';
+    $('#voiceInfo').textContent = '';
+    return;
+  }
+  rows.forEach((r, n) => {
+    const d = document.createElement('div');
+    d.className = 'vrow';
+    d.dataset.idx = r.i;
+    d.innerHTML = `<span class="idx">${n + 1}</span>
+      <span class="vbtns">
+        <button data-v="m" title="整句男聲">男</button>
+        <button data-v="f" title="整句女聲">女</button>
+        <button data-v="b" title="整句合唱">合</button>
+        <button data-v="" title="整句清除">✕</button>
+      </span>
+      <span class="vtext"></span>
+      <span class="vtime">${r.l.t === null ? '—' : r.l.t.toFixed(1)}</span>`;
+    const text = d.querySelector('.vtext');
+    paintWords(text, r.l, (wi) => {
+      const cur = Ly.voiceOf(r.l, wi);
+      const order = [null, 'm', 'f', 'b'];
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      Ly.setWordVoice(r.l, wi, next);
+      saveVoices();
+      renderVoiceList();
+    });
+    if (r.l.zh) { const s = document.createElement('small'); s.textContent = r.l.zh; text.appendChild(s); }
+    d.querySelectorAll('.vbtns button').forEach(b => {
+      if (b.dataset.v && r.l.v === b.dataset.v) b.classList.add('on');
+      b.onclick = () => { Ly.setLineVoice(r.l, b.dataset.v || null); saveVoices(); renderVoiceList(); };
+    });
+    if (r.l.t !== null) d.querySelector('.vtime').onclick = () => eng.seek(Math.max(0, r.l.t - 0.3));
+    box.appendChild(d);
+  });
+  const tagged = rows.filter(r => r.l.v || (r.l.w && r.l.w.some(x => x))).length;
+  $('#voiceInfo').textContent = `已標 ${tagged} / ${rows.length} 句`;
+  markVoiceRow();
+}
+function saveVoices() {
+  S.lyrics = LYR; save();
+  renderLyrics();
+  $('#jsonTa').value = JSON.stringify(LYR, null, 1);
+}
+/** 播放時在聲部清單標出目前這句 */
+function markVoiceRow() {
+  const box = $('#voiceList');
+  if (!box || !box.children.length) return;
+  box.querySelectorAll('.vrow.cur').forEach(e => e.classList.remove('cur'));
+  if (curLine < 0) return;
+  const el = box.querySelector(`.vrow[data-idx="${curLine}"]`);
+  if (el) {
+    el.classList.add('cur');
+    if ($('#lyricPanel').hidden === false) el.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function applyLyricMode() {
@@ -491,6 +587,8 @@ function bindTransport() {
   $('#nextSec').onclick = () => jumpSec(1);
   $('#vocalBtn').onclick = () => setVocals(!S.vocals);
   $('#lyricBtn').onclick = () => cycleLyric();
+  $('#fszDn').onclick = () => bumpLyricSize(-1);
+  $('#fszUp').onclick = () => bumpLyricSize(1);
   $('#loopBtn').onclick = toggleLoop;
   $('#loopClr').onclick = () => { S.loop.a = S.loop.b = null; S.loop.on = false; applyLoop(false); toast('已清除框選'); };
   $('#diffBtn').onclick = () => {
@@ -558,6 +656,7 @@ function syncControls() {
   $('#spdVal').style.color = S.speed !== 100 ? 'var(--warn)' : '';
   setVocals(S.vocals);
   applyLyricMode();
+  applyLyricSize();
 }
 
 // ------------------------------------------------------------------ keyboard
@@ -599,6 +698,8 @@ function bindKeys() {
     if (lower === 'n') { nextDiff(); return; }
     if (k === '[') { setSel(curBar, S.loop.b === null ? curBar : Math.max(curBar, S.loop.b)); toast(`循環起點 第 ${curBar + 1} 小節`); return; }
     if (k === ']') { setSel(S.loop.a === null ? curBar : Math.min(curBar, S.loop.a), curBar); toast(`循環終點 第 ${curBar + 1} 小節`); return; }
+    if (k === ',' || k === '<') { bumpLyricSize(-1); return; }
+    if (k === '.' || k === '>') { bumpLyricSize(1); return; }
     if (k === '?' || k === '/') { openPanel('#helpPanel'); return; }
   });
 }
@@ -790,7 +891,19 @@ function showTab(name) {
   $$('.tabpane').forEach(p => p.classList.toggle('on', p.dataset.pane === name));
 }
 function bindLyricEditor() {
-  $$('.tab').forEach(b => b.onclick = () => { showTab(b.dataset.tab); if (b.dataset.tab === 'sync') renderSyncList(); });
+  $$('.tab').forEach(b => b.onclick = () => {
+    showTab(b.dataset.tab);
+    if (b.dataset.tab === 'sync') renderSyncList();
+    if (b.dataset.tab === 'voice') renderVoiceList();
+  });
+  $('#voicePlay').onclick = () => eng.toggle();
+  $$('[data-allvoice]').forEach(b => b.onclick = () => {
+    const v = b.dataset.allvoice || null;
+    if (!v && !confirm('清除全部聲部標註？')) return;
+    for (const l of LYR.lines) if (!l.br) Ly.setLineVoice(l, v);
+    saveVoices(); renderVoiceList();
+    toast(v ? `整首設為${Ly.VOICE_NAME[v]}聲` : '聲部標註已清除');
+  });
   $('#pasteApply').onclick = () => {
     let en = $('#enTa').value, zh = $('#zhTa').value, note = '';
     if ($('#cleanChk').checked) {
@@ -863,6 +976,7 @@ function commitLyrics(d) {
   renderLyrics();
   $('#jsonTa').value = JSON.stringify(LYR, null, 1);
   renderSyncList();
+  renderVoiceList();
 }
 function textRows() { return LYR.lines.map((l, i) => ({ l, i })).filter(r => !r.l.br); }
 function renderSyncList() {

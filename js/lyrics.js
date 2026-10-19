@@ -151,15 +151,72 @@ export function build(enRaw, zhRaw) {
   return { version: 1, lines };
 }
 
+// --------------------------------------------------------------- 聲部標註
+// 'm' = 男聲(藍) / 'f' = 女聲(紅) / 'b' = 合唱(綠) / null = 未設定
+export const VOICES = ['m', 'f', 'b'];
+export const VOICE_NAME = { m: '男', f: '女', b: '合' };
+
+/** 把一句拆成「可標註的字」與「中間的空白」，字的 index 就是 w 陣列的 index */
+export function words(en) {
+  const out = [];
+  let wi = 0;
+  for (const part of String(en || '').split(/(\s+)/)) {
+    if (part === '') continue;
+    if (/^\s+$/.test(part)) out.push({ text: part, isWord: false });
+    else out.push({ text: part, isWord: true, wi: wi++ });
+  }
+  return out;
+}
+
+export function wordCount(en) {
+  return words(en).filter(w => w.isWord).length;
+}
+
+/** 某個字實際的聲部：單字設定優先，沒有就用整句的 */
+export function voiceOf(line, wi) {
+  if (!line) return null;
+  const w = line.w;
+  if (Array.isArray(w) && w[wi]) return w[wi];
+  return line.v || null;
+}
+
+/** 整句設定（會清掉單字層級的覆寫，才不會改了看不出效果） */
+export function setLineVoice(line, v) {
+  line.v = v || null;
+  line.w = null;
+}
+
+/** 單字設定；與整句相同時存 null（代表繼承） */
+export function setWordVoice(line, wi, v) {
+  const n = wordCount(line.en);
+  if (!Array.isArray(line.w) || line.w.length !== n) {
+    line.w = new Array(n).fill(null);
+  }
+  line.w[wi] = (v && v !== line.v) ? v : (v || null);
+  if (line.w.every(x => !x)) line.w = null;
+}
+
+const okVoice = (v) => (VOICES.includes(v) ? v : null);
+
 export function normalize(data) {
   if (!data || !Array.isArray(data.lines)) return { version: 1, lines: [] };
   const lines = data.lines.map(l => {
     if (l && l.br) return { br: true };
-    return {
+    const en = String(l?.en ?? '');
+    const out = {
       t: (typeof l.t === 'number' && isFinite(l.t)) ? l.t : null,
-      en: String(l?.en ?? ''),
+      en,
       zh: String(l?.zh ?? ''),
     };
+    const v = okVoice(l?.v);
+    if (v) out.v = v;
+    if (Array.isArray(l?.w)) {
+      const n = wordCount(en);
+      const w = new Array(n).fill(null);
+      for (let i = 0; i < Math.min(n, l.w.length); i++) w[i] = okVoice(l.w[i]);
+      if (w.some(x => x)) out.w = w;
+    }
+    return out;
   });
   return { version: 1, lines };
 }

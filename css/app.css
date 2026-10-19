@@ -4,6 +4,9 @@
   --acc:#4cc2ff; --acc2:#1b6e94;
   --hot:#ff4d5e; --hot2:#5a1d24;
   --ok:#36d399; --warn:#ffc14d;
+  --c-m:#5aa9ff;   /* 男聲：藍 */
+  --c-f:#ff5c6c;   /* 女聲：紅 */
+  --c-b:#4ade80;   /* 合唱：綠 */
   --r:10px;
   --fs-en:clamp(19px,2.0vw,30px);
   --fs-zh:clamp(14px,1.25vw,19px);
@@ -74,8 +77,17 @@ header{display:flex;align-items:center;gap:14px;padding:9px 16px;background:var(
 #lyricPad::-webkit-scrollbar{width:0}
 #lyricWrap.hidden #lyricPad{visibility:hidden}
 .lrow{padding:7px 0;cursor:pointer;transition:opacity .25s,transform .25s;max-width:1100px;margin:0 auto}
-.lrow .en{font-size:var(--fs-en);line-height:1.3;color:#6f7d90;transition:color .2s,text-shadow .2s;font-weight:600;letter-spacing:.2px}
-.lrow .zh{font-size:var(--fs-zh);color:#56616f;margin-top:3px;line-height:1.35}
+.lrow .en{font-size:calc(var(--fs-en) * var(--lyr-scale,1));line-height:1.3;color:#6f7d90;transition:color .2s,text-shadow .2s;font-weight:600;letter-spacing:.2px}
+.lrow .zh{font-size:calc(var(--fs-zh) * var(--lyr-scale,1));color:#56616f;margin-top:3px;line-height:1.35}
+
+/* 逐字聲部顏色：沒標註的字維持上面的顏色 */
+.w{transition:opacity .2s}
+.w.v-m{color:var(--c-m)}
+.w.v-f{color:var(--c-f)}
+.w.v-b{color:var(--c-b)}
+.lrow:not(.cur) .w{opacity:.74}
+.lrow.past .w{opacity:.55}
+.lrow.cur .w{opacity:1}
 .lrow:hover .en{color:#9fb0c4}
 .lrow.past .en{color:#515d6d}
 .lrow.cur .en{color:#fff;text-shadow:0 0 22px rgba(76,194,255,.45)}
@@ -256,6 +268,39 @@ textarea{
 #audioInfo{font-size:12.5px;line-height:1.8;margin-bottom:10px}
 #audioInfo b{color:var(--fg)}
 #audioInfo .miss{color:var(--warn)}
+
+/* 歌詞字級調整（標題列） */
+.fsz{display:inline-flex;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:2px 4px}
+.fsz button{padding:4px 7px;border-radius:6px;font-size:12px;color:var(--dim);line-height:1}
+.fsz button:hover{background:#2c3a4c;color:var(--fg)}
+.fsz output{font-size:11px;color:var(--dim);min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* 聲部標註分頁 */
+.vlegend{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--bg3);
+  border:1px solid var(--line);font-size:12px;margin:0 2px;font-weight:700}
+.vlegend.v-m{color:var(--c-m);border-color:#2d5c88}
+.vlegend.v-f{color:var(--c-f);border-color:#8a3340}
+.vlegend.v-b{color:var(--c-b);border-color:#2a6b45}
+.voicelist{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+.vrow{display:flex;align-items:flex-start;gap:10px;padding:7px 10px;border-bottom:1px solid #202833}
+.vrow:last-child{border-bottom:0}
+.vrow.cur{background:#1b2c39}
+.vrow .idx{width:26px;flex:none;color:var(--dim2);font-size:12px;text-align:right;
+  font-variant-numeric:tabular-nums;padding-top:4px}
+.vrow .vbtns{display:flex;gap:3px;flex:none;padding-top:1px}
+.vrow .vbtns button{width:26px;height:24px;border-radius:6px;background:var(--bg3);
+  border:1px solid var(--line);font-size:12px;line-height:1;color:var(--dim);display:grid;place-items:center}
+.vrow .vbtns button:hover{background:#2c3a4c}
+.vrow .vbtns button.on{color:#06121b;font-weight:700}
+.vrow .vbtns button[data-v=m].on{background:var(--c-m);border-color:var(--c-m)}
+.vrow .vbtns button[data-v=f].on{background:var(--c-f);border-color:var(--c-f)}
+.vrow .vbtns button[data-v=b].on{background:var(--c-b);border-color:var(--c-b)}
+.vrow .vtext{flex:1;min-width:0;font-size:15px;line-height:1.5;color:#8d9aab;word-break:break-word}
+.vrow .vtext small{display:block;color:var(--dim2);font-size:12px;margin-top:2px}
+.vrow .vtime{flex:none;width:52px;text-align:right;color:var(--dim2);font-size:11px;
+  font-variant-numeric:tabular-nums;padding-top:5px}
+.w.tap{cursor:pointer;border-radius:4px;padding:0 1px}
+.w.tap:hover{background:#2c3a4c;outline:1px solid var(--line)}
 
 #toast{
   position:fixed;left:50%;bottom:86px;transform:translate(-50%,14px);

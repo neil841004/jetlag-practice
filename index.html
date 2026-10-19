@@ -51,6 +51,7 @@
     <div class="hdr-btns">
       <button id="vocalBtn" class="tgl on" title="V">人聲 <b>ON</b></button>
       <button id="lyricBtn" class="tgl on" title="H">歌詞</button>
+      <span class="fsz"><button id="fszDn" title="歌詞縮小（,）">A−</button><output id="fszVal">100%</output><button id="fszUp" title="歌詞放大（.）">A+</button></span>
       <button id="editLyricBtn" class="ghost" title="貼上 / 同步歌詞">歌詞編輯</button>
       <button id="secBtn" class="ghost" title="段落設定">段落</button>
       <button id="syncBtn" class="ghost" title="兩軌對齊微調">對齊</button>
@@ -148,6 +149,7 @@
     <div><kbd>↑</kbd><kbd>↓</kbd> Key ±1 半音</div>
     <div><kbd>+</kbd><kbd>−</kbd> 速度 ±10%</div>
     <div><kbd>0</kbd> 速度與 Key 歸零</div>
+    <div><kbd>,</kbd><kbd>.</kbd> 歌詞縮小 / 放大</div>
   </div>
   <h3>滑鼠</h3>
   <ul class="tips">
@@ -155,6 +157,7 @@
     <li>小節格：<b>右鍵</b> 或 <b>Ctrl+點擊</b> 標記困難小節（紅色）。</li>
     <li>有框選範圍時，按 <b>⚑ 標記困難</b> 會整段一起標記。</li>
     <li>框選後 <b>點擊框選範圍外</b> 的任一小節 = 取消循環與框選；框選中 <b>淡藍色</b> 代表循環未開、<b>黃色</b> 代表循環進行中。</li>
+    <li>男女對唱可逐句、逐字標顏色：<b>歌詞編輯 → 聲部標註</b>（<span style="color:var(--c-m)">男藍</span>、<span style="color:var(--c-f)">女紅</span>、<span style="color:var(--c-b)">合唱綠</span>）。</li>
     <li>標記與所有設定都存在這台電腦（瀏覽器 localStorage）。</li>
   </ul>
 </div>
@@ -234,7 +237,8 @@
   <div class="tabs">
     <button class="tab on" data-tab="paste">1. 貼上歌詞</button>
     <button class="tab" data-tab="sync">2. 打拍同步</button>
-    <button class="tab" data-tab="file">3. 匯入 / 匯出</button>
+    <button class="tab" data-tab="voice">3. 聲部標註</button>
+    <button class="tab" data-tab="file">4. 匯入 / 匯出</button>
   </div>
 
   <div class="tabpane on" data-pane="paste">
@@ -277,6 +281,24 @@
       <span id="shiftInfo" class="dim"></span>
     </div>
     <div id="syncList" class="synclist"></div>
+  </div>
+
+  <div class="tabpane" data-pane="voice">
+    <p class="dim">這首是男女對唱。<b>點左邊的按鈕設定整句</b>，<b>直接點某個字</b>則單獨設定那個字
+       （重複點同一個字會循環：男 → 女 → 合唱 → 取消；與整句相同的那個會自動略過）。顏色：
+       <span class="vlegend v-m">男聲</span>
+       <span class="vlegend v-f">女聲</span>
+       <span class="vlegend v-b">合唱</span></p>
+    <div class="syncbar">
+      <button id="voicePlay" class="primary">▶ 播放 / 暫停</button>
+      <span class="dim">整首：</span>
+      <button data-allvoice="m">全設男</button>
+      <button data-allvoice="f">全設女</button>
+      <button data-allvoice="b">全設合唱</button>
+      <button data-allvoice="" class="ghost">全部清除</button>
+      <span id="voiceInfo" class="pill"></span>
+    </div>
+    <div id="voiceList" class="voicelist"></div>
   </div>
 
   <div class="tabpane" data-pane="file">
