@@ -256,6 +256,75 @@ export function normalize(data) {
   return { version: 1, lines };
 }
 
+/**
+ * 重新匯入歌詞時，把舊的聲部標註與時間接到新的句子上。
+ * 先用 LCS 對齊文字相同的句子當錨點，錨點之間若雙方各只剩一句，
+ * 視為「同一句改了字」也接過去。逐字標註只有在字數沒變時才保留。
+ * 回傳 { data, stats }。
+ */
+export function mergeKeep(prev, next) {
+  const out = normalize(next);
+  const stats = { keptVoice: 0, keptTime: 0, droppedWords: 0, hadVoice: 0, hadTime: 0 };
+  if (!prev || !Array.isArray(prev.lines)) return { data: out, stats };
+
+  const oldLines = prev.lines.filter(l => !l.br);
+  stats.hadVoice = oldLines.filter(l => l.v || (Array.isArray(l.w) && l.w.some(x => x))).length;
+  stats.hadTime = oldLines.filter(l => typeof l.t === 'number').length;
+
+  const newIdx = [];
+  out.lines.forEach((l, i) => { if (!l.br) newIdx.push(i); });
+
+  const key = (s) => String(s || '').toLowerCase()
+    .replace(/[^a-z0-9一-鿿]+/g, ' ').trim();
+  const A = oldLines.map(l => key(l.en));
+  const B = newIdx.map(i => key(out.lines[i].en));
+  const n = A.length, m = B.length;
+
+  // LCS：找出文字完全相同的對應
+  const dp = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = (A[i] && A[i] === B[j])
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const pairs = [];
+  for (let i = 0, j = 0; i < n && j < m;) {
+    if (A[i] && A[i] === B[j]) { pairs.push([i, j]); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+    else j++;
+  }
+
+  // 錨點之間雙方各剩一句 → 當成同一句被改過字
+  const mO = new Set(pairs.map(p => p[0]));
+  const mN = new Set(pairs.map(p => p[1]));
+  let po = 0, pn = 0;
+  for (const [ao, an] of [...pairs, [n, m]]) {
+    const og = [], ng = [];
+    for (let k = po; k < ao; k++) if (!mO.has(k)) og.push(k);
+    for (let k = pn; k < an; k++) if (!mN.has(k)) ng.push(k);
+    if (og.length === 1 && ng.length === 1) pairs.push([og[0], ng[0]]);
+    po = ao + 1; pn = an + 1;
+  }
+
+  for (const [oi, ni] of pairs) {
+    const src = oldLines[oi], dst = out.lines[newIdx[ni]];
+    if (!src || !dst) continue;
+    if (src.v) { dst.v = src.v; stats.keptVoice++; }
+    if (Array.isArray(src.w) && src.w.some(x => x)) {
+      if (wordCount(src.en) === wordCount(dst.en)) {
+        dst.w = src.w.slice();
+        if (!src.v) stats.keptVoice++;
+      } else {
+        stats.droppedWords++;
+      }
+    }
+    if (dst.t === null && typeof src.t === 'number') { dst.t = src.t; stats.keptTime++; }
+  }
+  return { data: out, stats };
+}
+
 export function hasAny(data) {
   return !!data && data.lines.some(l => !l.br && (l.en || l.zh));
 }

@@ -943,14 +943,24 @@ function bindLyricEditor() {
       if (rm) note = `　(清掉 ${rm} 行雜訊`
         + (ce.markers.length ? `、${ce.markers.length} 個段落標記` : '') + ')';
     }
-    const d = Ly.build(en, zh);
-    if (!Ly.hasAny(d)) { toast('沒有讀到任何歌詞'); return; }
+    const built = Ly.build(en, zh);
+    if (!Ly.hasAny(built)) { toast('沒有讀到任何歌詞'); return; }
+    // 重新匯入時沿用既有的聲部標註與打拍時間，不要整組被洗掉
+    const { data: d, stats } = Ly.mergeKeep(LYR, built);
     commitLyrics(d);
     const n = d.lines.filter(l => !l.br).length;
     const s = d.lines.filter(l => !l.br && l.t !== null).length;
     const zn = d.lines.filter(l => !l.br && l.zh).length;
-    toast(`匯入 ${n} 句，其中 ${s} 句有時間`);
-    $('#pasteInfo').textContent = `英文 ${n} 句 · 翻譯 ${zn} 句 · ${s} 句有時間${note}`
+    let kept = '';
+    if (stats.hadVoice || stats.hadTime) {
+      const bits = [];
+      if (stats.hadVoice) bits.push(`聲部 ${stats.keptVoice}/${stats.hadVoice}`);
+      if (stats.hadTime) bits.push(`時間 ${stats.keptTime}/${stats.hadTime}`);
+      kept = `　保留：${bits.join('、')}`;
+      if (stats.droppedWords) kept += `（${stats.droppedWords} 句因字數變了，逐字標註改回整句）`;
+    }
+    toast(`匯入 ${n} 句${kept ? '，' + kept.trim() : `，其中 ${s} 句有時間`}`);
+    $('#pasteInfo').textContent = `英文 ${n} 句 · 翻譯 ${zn} 句 · ${s} 句有時間${note}${kept}`
       + (zn && zn !== n ? '　⚠ 兩邊行數不一樣，翻譯可能錯位' : '');
     if (s === 0) { showTab('sync'); renderSyncList(); }
   };
