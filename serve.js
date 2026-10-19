@@ -7,6 +7,8 @@ const { exec } = require('child_process');
 
 const PORT = parseInt(process.argv[2], 10) || 8123;
 const ROOT = __dirname;
+// --cors：只在需要跨來源測試時加（例如從部署好的網頁抓本機音檔）
+const CORS = process.argv.includes('--cors');
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -38,6 +40,7 @@ const server = http.createServer((req, res) => {
       return;
     }
     const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    if (CORS) res.setHeader('access-control-allow-origin', '*');
     const range = req.headers.range;
     if (range) {
       const m = /bytes=(\d*)-(\d*)/.exec(range);
