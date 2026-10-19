@@ -73,7 +73,7 @@ header{display:flex;align-items:center;gap:14px;padding:9px 16px;background:var(
 /* ---------- lyrics ---------- */
 #lyricWrap{position:relative;overflow:hidden;background:
   radial-gradient(90% 70% at 50% 0%,#141b25,#0e1116)}
-#lyricPad{height:100%;overflow-y:auto;padding:24vh 6vw;scrollbar-width:none}
+#lyricPad{height:100%;overflow-y:auto;padding:12px 6vw 55vh;scrollbar-width:none}
 #lyricPad::-webkit-scrollbar{width:0}
 #lyricWrap.hidden #lyricPad{visibility:hidden}
 .lrow{padding:7px 0;cursor:pointer;transition:opacity .25s,transform .25s;max-width:1100px;margin:0 auto}
@@ -95,6 +95,7 @@ header{display:flex;align-items:center;gap:14px;padding:9px 16px;background:var(
 .lrow.cur{transform:scale(1.012);transform-origin:left center}
 .lrow.next .en{color:#8a99ad}
 .lrow.sec{margin-top:26px;padding-top:4px;cursor:default}
+.lrow.sec:first-child{margin-top:0}
 .lrow.sec .tag{display:inline-block;font-size:11px;letter-spacing:3px;color:var(--dim2);text-transform:uppercase;border-top:1px solid var(--line);padding-top:8px;min-width:120px}
 #lyricWrap.zh-cur .lrow:not(.cur) .zh{display:none}
 #lyricWrap.zh-off .zh{display:none}
@@ -325,7 +326,7 @@ textarea{
   .keytag{margin-left:auto}
   .hdr-btns{flex:1 0 100%}
   .hdr-btns button{font-size:12px;padding:6px 10px}
-  #lyricPad{padding:18vh 5vw}
+  #lyricPad{padding:10px 5vw 55vh}
   footer{gap:8px 12px}
   .time{margin-left:0}
 }
@@ -335,7 +336,7 @@ textarea{
    控制列維持最下面。小節一排 4 格（超寬螢幕 8 格）。
    =================================================================== */
 @media (min-width:1000px) and (orientation:landscape){
-  :root{--sidew:clamp(240px,23vw,390px)}
+  :root{--sidew:clamp(420px,42vw,720px)}
   #app{
     grid-template-columns:var(--sidew) minmax(0,1fr);
     grid-template-rows:auto minmax(0,1fr) auto auto auto;
@@ -361,13 +362,13 @@ textarea{
   .cell:nth-child(4n+1){margin-left:0}
 
   /* 右欄空間更大，少留點上下留白，一次看到更多句 */
-  #lyricPad{padding:15vh 2.5vw}
+  #lyricPad{padding:10px 2.5vw 50vh}
   .lrow{max-width:none}
 }
 
-/* 超寬螢幕：左欄加寬，一排 8 小節（中間保留 4 小節分隔） */
-@media (min-width:1600px) and (orientation:landscape){
-  :root{--sidew:clamp(330px,25vw,520px)}
+/* 寬一點就排 8 小節（中間保留 4 小節分隔），列數少一半、比較好找 */
+@media (min-width:1200px) and (orientation:landscape){
+  :root{--sidew:clamp(480px,44vw,1000px)}
   #grid{grid-template-columns:repeat(8,1fr)}
   .cell:nth-child(4n+1){margin-left:5px}
   .cell:nth-child(8n+1){margin-left:0}
