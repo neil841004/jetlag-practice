@@ -1,0 +1,17 @@
+# 音檔不進版控：
+#  1. 這是商業錄音，公開 repo 等於公開散布
+#  2. 59MB 每次造訪都要重抓，網頁版改成在各自電腦選一次本機檔案
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+*.aac
+
+# 其他
+.DS_Store
+Thumbs.db
+node_modules/
+
+# 個人設定檔（含自己貼的歌詞），不進版控
+jetlag-settings-*.json

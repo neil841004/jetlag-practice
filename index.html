@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jet Lag 練唱室</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ============ 載入畫面 ============ -->
+<div id="loader">
+  <div class="load-box">
+    <h1>Jet Lag <span>練唱室</span></h1>
+    <p class="sub">Simple Plan</p>
+    <div class="bar"><div id="loadBar"></div></div>
+    <p id="loadMsg">準備中…</p>
+    <button id="startBtn" class="primary" hidden>開始練唱</button>
+    <p id="loadErr" class="err" hidden></p>
+
+    <!-- 這台電腦還沒有音檔時顯示（網頁版不附音檔） -->
+    <div id="pickBox" hidden>
+      <h2>選擇你電腦上的音檔</h2>
+      <p class="dim">這個網頁不附音檔。請選你自己的兩個檔案 ——
+        檔案<b>只會存在這台電腦的瀏覽器裡</b>，不會上傳到任何地方，下次打開就不用再選。</p>
+      <label class="pick">
+        <span>① 原曲（有人聲）</span>
+        <input type="file" id="pickVocal" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg">
+      </label>
+      <label class="pick">
+        <span>② 伴奏（無人聲）</span>
+        <input type="file" id="pickInst" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg">
+      </label>
+      <button id="pickGo" class="primary" disabled>載入並開始</button>
+      <p class="dim small">預設對齊值（伴奏晚 2.825 秒）是針對
+        <code>Jet Lag.mp3</code> 與 <code>Jet Lag無人聲.wav</code> 這兩個檔測出來的；
+        換成別的檔案請到「對齊」面板重新微調。</p>
+      <p class="dim small">有設定檔的話，載入後到「設定」面板匯入，歌詞與段落就跟著回來。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 主畫面 ============ -->
+<div id="app" hidden>
+
+  <header>
+    <div class="title">
+      <strong>Jet Lag</strong><em>Simple Plan</em>
+      <span class="keytag" id="keyTag"></span>
+    </div>
+    <div class="hdr-btns">
+      <button id="vocalBtn" class="tgl on" title="V">人聲 <b>ON</b></button>
+      <button id="lyricBtn" class="tgl on" title="H">歌詞</button>
+      <button id="editLyricBtn" class="ghost" title="貼上 / 同步歌詞">歌詞編輯</button>
+      <button id="secBtn" class="ghost" title="段落設定">段落</button>
+      <button id="syncBtn" class="ghost" title="兩軌對齊微調">對齊</button>
+      <button id="setBtn" class="ghost" title="音檔 / 設定檔搬家">設定</button>
+      <button id="helpBtn" class="ghost" title="?">?</button>
+    </div>
+  </header>
+
+  <!-- 段落快速跳 -->
+  <nav id="sectionBar"></nav>
+
+  <!-- 歌詞 -->
+  <main id="lyricWrap">
+    <div id="lyricPad"></div>
+    <div id="lyricEmpty" class="empty">
+      <p>還沒有歌詞資料。</p>
+      <p class="dim">按 <b>歌詞編輯</b> 貼上英文歌詞與中文翻譯（支援 .lrc 時間標記，<br>或用「打拍同步」自己抓時間點）。</p>
+      <button class="primary" id="emptyEditBtn">開始建立歌詞</button>
+    </div>
+  </main>
+
+  <!-- 總覽時間軸 -->
+  <section id="stripWrap">
+    <canvas id="strip"></canvas>
+    <div id="stripHint" class="hint">點擊 = 跳播　拖曳 = 框選循環段（自動對齊小節）</div>
+  </section>
+
+  <!-- 小節格 -->
+  <section id="gridWrap">
+    <div id="grid"></div>
+  </section>
+
+  <!-- 控制列 -->
+  <footer>
+    <div class="grp transport">
+      <button id="prevSec" title="Ctrl+←">⏮</button>
+      <button id="playBtn" class="play" title="空白鍵">▶</button>
+      <button id="nextSec" title="Ctrl+→">⏭</button>
+      <span id="time" class="time">0:00 <i>/ 0:00</i></span>
+    </div>
+
+    <div class="grp">
+      <button id="loopBtn" class="tgl" title="C / L">🔁 循環</button>
+      <span id="loopInfo" class="pill dim">未框選</span>
+      <button id="loopClr" class="ghost sm" title="Esc">清除</button>
+    </div>
+
+    <div class="grp">
+      <button id="diffBtn" class="ghost" title="D">⚑ 標記困難</button>
+      <span id="diffInfo" class="pill dim">0 個</span>
+      <button id="diffNext" class="ghost sm" title="N">下一個 ▸</button>
+      <button id="diffListBtn" class="ghost sm">清單</button>
+    </div>
+
+    <div class="grp stepper">
+      <label>速度</label>
+      <button id="spdDn" title="−">−</button>
+      <output id="spdVal">100%</output>
+      <button id="spdUp" title="+">＋</button>
+    </div>
+
+    <div class="grp stepper">
+      <label>Key</label>
+      <button id="keyDn" title="↓">−</button>
+      <output id="keyVal">±0</output>
+      <button id="keyUp" title="↑">＋</button>
+    </div>
+
+    <div class="grp vol">
+      <label for="vol">🔊</label>
+      <input id="vol" type="range" min="0" max="100" value="85">
+    </div>
+  </footer>
+</div>
+
+<!-- ============ 面板 ============ -->
+<div id="modalBg" hidden></div>
+
+<div id="helpPanel" class="panel" hidden>
+  <h2>操作說明 <button class="x" data-close>✕</button></h2>
+  <div class="kb">
+    <div><kbd>空白</kbd> 播放 / 暫停</div>
+    <div><kbd>←</kbd><kbd>→</kbd> 前後一小節</div>
+    <div><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 前後四小節</div>
+    <div><kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> 上下一段落</div>
+    <div><kbd>1</kbd>…<kbd>9</kbd> 直接跳段落</div>
+    <div><kbd>Home</kbd> 回到開頭</div>
+    <div><kbd>V</kbd> 人聲 開 / 關</div>
+    <div><kbd>H</kbd> 歌詞顯示模式</div>
+    <div><kbd>C</kbd> 或 <kbd>L</kbd> 循環 開 / 關</div>
+    <div><kbd>[</kbd> <kbd>]</kbd> 設循環起 / 迄點</div>
+    <div><kbd>Esc</kbd> 清除框選 / 關面板</div>
+    <div><kbd>D</kbd> 標記 / 取消困難小節</div>
+    <div><kbd>N</kbd> 跳到下一個困難處</div>
+    <div><kbd>↑</kbd><kbd>↓</kbd> Key ±1 半音</div>
+    <div><kbd>+</kbd><kbd>−</kbd> 速度 ±10%</div>
+    <div><kbd>0</kbd> 速度與 Key 歸零</div>
+  </div>
+  <h3>滑鼠</h3>
+  <ul class="tips">
+    <li>總覽軸 / 小節格：<b>點擊</b> 跳播，<b>拖曳</b> 框選循環段（自動對齊小節）。</li>
+    <li>小節格：<b>右鍵</b> 或 <b>Ctrl+點擊</b> 標記困難小節（紅色）。</li>
+    <li>有框選範圍時，按 <b>⚑ 標記困難</b> 會整段一起標記。</li>
+    <li>框選後 <b>點擊框選範圍外</b> 的任一小節 = 取消循環與框選；框選中 <b>淡藍色</b> 代表循環未開、<b>黃色</b> 代表循環進行中。</li>
+    <li>標記與所有設定都存在這台電腦（瀏覽器 localStorage）。</li>
+  </ul>
+</div>
+
+<div id="syncPanel" class="panel" hidden>
+  <h2>兩軌對齊微調 <button class="x" data-close>✕</button></h2>
+  <p class="dim">自動分析結果：伴奏比原曲<b>晚 2.825 秒</b>（整首一致，已自動補償）。<br>
+     若切換時覺得還差一點，在這裡微調，設定會記在這台電腦。</p>
+  <div class="syncrow">
+    <button data-sync="-50">−50</button>
+    <button data-sync="-10">−10</button>
+    <button data-sync="-1">−1</button>
+    <output id="syncVal">0 ms</output>
+    <button data-sync="1">+1</button>
+    <button data-sync="10">+10</button>
+    <button data-sync="50">+50</button>
+  </div>
+  <input id="syncRange" type="range" min="-600" max="600" step="1" value="0">
+  <p class="dim">往右 = 伴奏播得更晚。播放中按 <kbd>V</kbd> 來回切換最容易聽出差異。</p>
+  <div class="row-end"><button id="syncReset" class="ghost">歸零</button></div>
+  <hr>
+  <h3>小節格線</h3>
+  <p class="dim">自動測得 BPM 145.0、第 1 小節在 0.582 秒。若覺得小節線沒對準重音可微調。</p>
+  <div class="gridform">
+    <label>BPM <input id="bpmIn" type="number" step="0.001"></label>
+    <label>第1小節起點(秒) <input id="firstIn" type="number" step="0.001"></label>
+    <label>每小節拍數 <input id="bpbIn" type="number" step="1" min="1" max="12"></label>
+  </div>
+  <div class="row-end">
+    <button id="gridReset" class="ghost">還原預設</button>
+    <button id="gridApply" class="primary">套用格線</button>
+  </div>
+</div>
+
+<div id="setPanel" class="panel" hidden>
+  <h2>設定 / 搬到另一台電腦 <button class="x" data-close>✕</button></h2>
+
+  <h3>音檔</h3>
+  <div id="audioInfo" class="dim"></div>
+  <div class="pickrow">
+    <label class="pick sm"><span>換原曲</span><input type="file" id="reVocal" accept="audio/*"></label>
+    <label class="pick sm"><span>換伴奏</span><input type="file" id="reInst" accept="audio/*"></label>
+    <button id="audioClear" class="ghost">清除已存音檔</button>
+  </div>
+  <p class="dim small">音檔存在這台電腦的瀏覽器裡（IndexedDB），不會上傳。換檔後重新整理生效。</p>
+
+  <hr>
+  <h3>設定檔（歌詞 · 段落 · 困難標記 · 對齊 · 格線）</h3>
+  <p class="dim">在另一台電腦打開這個網址後，選好音檔、再匯入這個檔，所有東西就一模一樣。</p>
+  <div class="row-end" style="justify-content:flex-start">
+    <button id="cfgExport" class="primary">匯出設定檔</button>
+    <label class="pick sm"><span>匯入設定檔</span><input type="file" id="cfgImport" accept=".json,application/json"></label>
+    <button id="cfgReset" class="ghost">清除全部設定</button>
+  </div>
+  <div id="cfgInfo" class="dim small"></div>
+</div>
+
+<div id="diffPanel" class="panel" hidden>
+  <h2>困難小節 <button class="x" data-close>✕</button></h2>
+  <div id="diffBody"></div>
+  <div class="row-end"><button id="diffClear" class="ghost">全部清除</button></div>
+</div>
+
+<div id="secPanel" class="panel" hidden>
+  <h2>段落設定 <button class="x" data-close>✕</button></h2>
+  <p class="dim">段落起點以小節為單位（自動分析結果，可自行修正）。</p>
+  <div id="secBody"></div>
+  <div class="row-end">
+    <button id="secAdd" class="ghost">＋ 新增段落</button>
+    <button id="secReset" class="ghost">還原預設</button>
+    <button id="secSave" class="primary">儲存</button>
+  </div>
+</div>
+
+<div id="lyricPanel" class="panel wide" hidden>
+  <h2>歌詞編輯 <button class="x" data-close>✕</button></h2>
+  <div class="tabs">
+    <button class="tab on" data-tab="paste">1. 貼上歌詞</button>
+    <button class="tab" data-tab="sync">2. 打拍同步</button>
+    <button class="tab" data-tab="file">3. 匯入 / 匯出</button>
+  </div>
+
+  <div class="tabpane on" data-pane="paste">
+    <p class="dim">左邊貼英文歌詞、右邊貼中文翻譯，<b>一行一句、兩邊行數對齊</b>；空行會變成段落間隔。
+       若貼的是 <code>.lrc</code>（含 <code>[00:12.34]</code> 時間標記），時間會自動帶入。</p>
+    <div class="two">
+      <label>英文歌詞 / LRC<textarea id="enTa" spellcheck="false" placeholder="每行一句英文歌詞&#10;（或貼整份 .lrc 內容）"></textarea></label>
+      <label>中文翻譯 / LRC<textarea id="zhTa" spellcheck="false" placeholder="每行一句中文翻譯&#10;行數與左邊對齊"></textarea></label>
+    </div>
+    <div class="row-end">
+      <label class="chk"><input type="checkbox" id="cleanChk" checked>
+        自動清除 <code>[Verse 1]</code> <code>[Chorus]</code> 等標記與網頁雜訊</label>
+      <span id="pasteInfo" class="dim"></span>
+      <button id="pasteApply" class="primary">匯入</button>
+    </div>
+  </div>
+
+  <div class="tabpane" data-pane="sync">
+    <p class="dim">按 <b>播放</b>，唱到每句開頭時按 <kbd>Enter</kbd>（或下方按鈕）記下時間點；
+       <kbd>Backspace</kbd> 退回上一句重抓。時間也可以直接改數字，或按 <b>⟲</b> 設成目前播放位置。</p>
+    <div class="syncbar">
+      <button id="syncPlay" class="primary">▶ 播放 / 暫停</button>
+      <button id="stampBtn">⏱ 標記這句 (Enter)</button>
+      <button id="unstampBtn" class="ghost">↶ 退回 (Backspace)</button>
+      <label class="chk">對拍
+        <select id="snapSel">
+          <option value="0">不對齊</option>
+          <option value="2">半拍</option>
+          <option value="1">整拍</option>
+        </select>
+      </label>
+      <span id="stampInfo" class="pill"></span>
+    </div>
+    <div class="syncbar">
+      <span class="dim">全部時間一起移動（手按通常會慢一點，往左調）：</span>
+      <button data-shift="-100">−100ms</button>
+      <button data-shift="-20">−20ms</button>
+      <button data-shift="20">+20ms</button>
+      <button data-shift="100">+100ms</button>
+      <span id="shiftInfo" class="dim"></span>
+    </div>
+    <div id="syncList" class="synclist"></div>
+  </div>
+
+  <div class="tabpane" data-pane="file">
+    <p class="dim">把下面內容存成 <code>lyrics.json</code> 放在 index.html 旁邊，以後任何瀏覽器開啟都會自動載入
+       （現在的編輯已經存在這台電腦的瀏覽器裡）。</p>
+    <textarea id="jsonTa" spellcheck="false"></textarea>
+    <div class="row-end">
+      <button id="jsonLoadFile" class="ghost">重讀 lyrics.json</button>
+      <button id="jsonCopy" class="ghost">複製</button>
+      <button id="jsonDownload" class="ghost">下載 lyrics.json</button>
+      <button id="jsonApply" class="primary">套用上面的 JSON</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
