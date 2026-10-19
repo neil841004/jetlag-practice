@@ -196,6 +196,41 @@ export function setWordVoice(line, wi, v) {
   if (line.w.every(x => !x)) line.w = null;
 }
 
+/**
+ * 依聲部標註算出「要改放伴奏（消掉人聲）」的時間區間。
+ * mute = 'm' 關男聲 / 'f' 關女聲；合唱(b) 兩種模式都會被關掉。
+ * 沒有逐字時間，所以一句之內按字數平均分配；沒標註的字不動（照原曲）。
+ */
+export function muteRanges(data, mute, duration) {
+  if (!mute || !data || !Array.isArray(data.lines)) return [];
+  const timed = data.lines
+    .filter(l => !l.br && typeof l.t === 'number')
+    .sort((a, b) => a.t - b.t);
+  const raw = [];
+  for (let k = 0; k < timed.length; k++) {
+    const l = timed[k];
+    const start = l.t;
+    const end = (k + 1 < timed.length) ? timed[k + 1].t : (duration || l.t + 5);
+    if (!(end > start)) continue;
+    const n = wordCount(l.en);
+    if (!n) continue;
+    const step = (end - start) / n;
+    for (let j = 0; j < n; j++) {
+      const v = voiceOf(l, j);
+      if (v === mute || v === 'b') raw.push([start + j * step, start + (j + 1) * step]);
+    }
+  }
+  // 合併相鄰區間，減少來回切換
+  raw.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const r of raw) {
+    const last = out[out.length - 1];
+    if (last && r[0] <= last[1] + 1e-6) last[1] = Math.max(last[1], r[1]);
+    else out.push([r[0], r[1]]);
+  }
+  return out;
+}
+
 const okVoice = (v) => (VOICES.includes(v) ? v : null);
 
 export function normalize(data) {

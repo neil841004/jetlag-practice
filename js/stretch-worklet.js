@@ -59,6 +59,8 @@ class StretchProcessor extends AudioWorkletProcessor {
     this.q = HOP;           // 輸出游標（= HOP 表示需要產生新 hop）
     this.env = 0;           // 播放淡化包絡
     this.skipSearch = true;
+    this.userActive = 0;   // 使用者選的音軌（0=原曲 1=伴奏）
+    this.mute = [];        // 依聲部標註要改放伴奏的 [start,end] 區間
     this.ready = false;
     this.tick = 0;
 
@@ -73,7 +75,8 @@ class StretchProcessor extends AudioWorkletProcessor {
           new Float32Array(t.dec),
           t.offset));
         this.duration = m.duration;
-        this.tracks.forEach((t, i) => { t.gain = t.target = (i === m.active ? 1 : 0); });
+        this.userActive = m.active | 0;
+        this.tracks.forEach((t, i) => { t.gain = t.target = (i === this.userActive ? 1 : 0); });
         this.ready = true;
         this.q = HOP;
         break;
@@ -85,6 +88,7 @@ class StretchProcessor extends AudioWorkletProcessor {
         // 讓回報位置立刻反映新位置（下一個 hop 產生前 hopTime 仍是舊值）
         this.hopTime = this.timeline;
         this.hopDt = 0;
+        this.applyTargets();
         if (!this.playing) this.clearAcc();
         this.post();
         break;
@@ -92,12 +96,41 @@ class StretchProcessor extends AudioWorkletProcessor {
       case 'pitch':  this.pitch = m.v; break;
       case 'vol':    this.vol = m.v; break;
       case 'active':
-        this.tracks.forEach((t, i) => { t.target = (i === m.i ? 1 : 0); });
+        this.userActive = m.i;
+        this.applyTargets();
+        break;
+      case 'mute':                       // 依聲部要改放伴奏的時間區間
+        this.mute = Array.isArray(m.ranges) ? m.ranges : [];
+        this.applyTargets();
         break;
       case 'loop':   this.loop = m.loop; break;
       case 'offset':
         if (this.tracks[m.i]) { this.tracks[m.i].offset = m.v; this.skipSearch = true; }
         break;
+    }
+  }
+
+  /** 目前這個時間點該放哪一軌：人聲關掉、或落在被關掉的聲部區間 → 伴奏 */
+  wantTrack(t) {
+    if (this.userActive !== 0) return this.userActive;
+    return this.inMute(t) ? 1 : 0;
+  }
+  inMute(t) {
+    const r = this.mute;
+    if (!r || !r.length) return false;
+    let lo = 0, hi = r.length - 1;
+    while (lo <= hi) {
+      const m = (lo + hi) >> 1;
+      if (t < r[m][0]) hi = m - 1;
+      else if (t >= r[m][1]) lo = m + 1;
+      else return true;
+    }
+    return false;
+  }
+  applyTargets() {
+    const want = this.wantTrack(this.timeline);
+    for (let i = 0; i < this.tracks.length; i++) {
+      this.tracks[i].target = (i === want) ? 1 : 0;
     }
   }
 
@@ -187,6 +220,7 @@ class StretchProcessor extends AudioWorkletProcessor {
 
     this.hopTime = this.timeline;
     this.hopDt = dt;
+    this.applyTargets();
 
     for (const tr of this.tracks) {
       const ideal = (this.timeline + tr.offset) * sr;

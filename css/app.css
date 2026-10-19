@@ -269,6 +269,10 @@ textarea{
 #audioInfo b{color:var(--fg)}
 #audioInfo .miss{color:var(--warn)}
 
+/* 關男聲 / 關女聲 切換鈕 */
+#muteBtn.on-m{background:#1d4a73;border-color:var(--c-m);color:#dbeeff}
+#muteBtn.on-f{background:#6b2630;border-color:var(--c-f);color:#ffe0e4}
+
 /* 歌詞字級調整（標題列） */
 .fsz{display:inline-flex;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:2px 4px}
 .fsz button{padding:4px 7px;border-radius:6px;font-size:12px;color:var(--dim);line-height:1}

@@ -17,7 +17,7 @@ const DEF = () => ({
   diff: [], loop: { a: null, b: null, on: false },
   speed: 100, key: 0, vocals: true, lyricMode: 'all', vol: 85,
   syncMs: 0, grid: null, sections: null, lyrics: null,
-  snap: 0, shiftMs: 0, lyricSize: 100,
+  snap: 0, shiftMs: 0, lyricSize: 100, muteVoice: '',
 });
 let S = DEF();
 let G, eng, LYR = { version: 1, lines: [] }, TL = [], SEC = [], BARS = 0;
@@ -221,6 +221,7 @@ function renderLyrics() {
       const k = TL.findIndex(x => x.i === idx);
       if (k >= 0) forceLine = { k, t: l.t };
       paintLyricHighlight(k);
+      if (!eng.playing) eng.play();      // 暫停中點歌詞 → 直接開始播
     };
     frag.appendChild(d);
   });
@@ -329,6 +330,7 @@ function renderVoiceList() {
 }
 function saveVoices() {
   S.lyrics = LYR; save();
+  applyMute();
   renderLyrics();
   $('#jsonTa').value = JSON.stringify(LYR, null, 1);
 }
@@ -498,6 +500,7 @@ function endDrag() {
     }
     if (d.kind === 'grid') eng.seek(barT(d.from));
     else eng.seek(d.t);
+    if (!eng.playing) eng.play();        // 暫停中點小節 / 總覽軸 → 直接開始播
   } else {
     S.loop.on = true;
     applyLoop(false);
@@ -586,6 +589,7 @@ function bindTransport() {
   $('#prevSec').onclick = () => jumpSec(-1);
   $('#nextSec').onclick = () => jumpSec(1);
   $('#vocalBtn').onclick = () => setVocals(!S.vocals);
+  $('#muteBtn').onclick = cycleMute;
   $('#lyricBtn').onclick = () => cycleLyric();
   $('#fszDn').onclick = () => bumpLyricSize(-1);
   $('#fszUp').onclick = () => bumpLyricSize(1);
@@ -622,6 +626,29 @@ function setVocals(on) {
   b.innerHTML = `人聲 <b>${on ? 'ON' : 'OFF'}</b>`;
   save();
 }
+/** 依聲部標註把某一邊的人聲換成伴奏（合唱也算在內） */
+function applyMute() {
+  const m = S.muteVoice || '';
+  const ranges = m ? Ly.muteRanges(LYR, m, eng.duration) : [];
+  eng.setMuteRanges(ranges);
+  const b = $('#muteBtn');
+  b.textContent = m === 'm' ? '關男聲' : m === 'f' ? '關女聲' : '雙聲全開';
+  b.classList.toggle('on', !!m);
+  b.classList.toggle('on-m', m === 'm');
+  b.classList.toggle('on-f', m === 'f');
+  return ranges;
+}
+function cycleMute() {
+  S.muteVoice = S.muteVoice === '' ? 'm' : S.muteVoice === 'm' ? 'f' : '';
+  const ranges = applyMute();
+  save();
+  if (!S.muteVoice) { toast('兩邊人聲都播'); return; }
+  const who = S.muteVoice === 'm' ? '男聲' : '女聲';
+  if (!ranges.length) toast(`還沒有標註${who}段落（歌詞編輯 → 聲部標註）`);
+  else if (!S.vocals) toast(`已設定關${who}，但現在是伴奏模式（按 V 開人聲）`);
+  else toast(`關${who}：那些段落改播伴奏`);
+}
+
 function cycleLyric() {
   S.lyricMode = S.lyricMode === 'all' ? 'cur' : S.lyricMode === 'cur' ? 'off' : 'all';
   applyLyricMode(); save();
@@ -657,6 +684,7 @@ function syncControls() {
   setVocals(S.vocals);
   applyLyricMode();
   applyLyricSize();
+  applyMute();
 }
 
 // ------------------------------------------------------------------ keyboard
@@ -692,6 +720,7 @@ function bindKeys() {
     if (k >= '1' && k <= '9') { const i = +k - 1; if (SEC[i]) { eng.seek(barT(SEC[i].start)); toast(SEC[i].name); } return; }
     const lower = k.toLowerCase();
     if (lower === 'v') { setVocals(!S.vocals); toast(S.vocals ? '人聲 ON（原曲）' : '人聲 OFF（伴奏）'); return; }
+    if (lower === 'b') { cycleMute(); return; }
     if (lower === 'h') { cycleLyric(); return; }
     if (lower === 'l' || lower === 'c') { toggleLoop(); return; }
     if (lower === 'd') { toggleDiff(curBar); return; }
@@ -973,6 +1002,7 @@ function commitLyrics(d) {
   LYR = Ly.normalize(d);
   TL = Ly.timeline(LYR);
   S.lyrics = LYR; save();
+  applyMute();
   renderLyrics();
   $('#jsonTa').value = JSON.stringify(LYR, null, 1);
   renderSyncList();
@@ -1012,6 +1042,7 @@ function renderSyncList() {
 function afterStampEdit() {
   TL = Ly.timeline(LYR);
   S.lyrics = LYR; save();
+  applyMute();
   renderLyrics(); renderSyncList();
   $('#jsonTa').value = JSON.stringify(LYR, null, 1);
 }

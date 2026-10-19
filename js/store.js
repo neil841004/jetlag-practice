@@ -36,13 +36,17 @@ export async function getAudio(key) {
   } catch { return null; }
 }
 
+// 注意：要等 transaction 的 oncomplete，不是 request 的 onsuccess。
+// onsuccess 時交易還沒提交，若馬上 location.reload() 會被中止，檔案就沒存到。
 export async function putAudio(key, file) {
   const db = await openDB();
   const rec = { blob: file, name: file.name, size: file.size, at: Date.now() };
   return new Promise((res, rej) => {
-    const r = tx(db, 'readwrite').put(rec, key);
-    r.onsuccess = () => res(rec);
-    r.onerror = () => rej(r.error);
+    const t = db.transaction(STORE, 'readwrite');
+    t.objectStore(STORE).put(rec, key);
+    t.oncomplete = () => res(rec);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error('IndexedDB 交易被中止'));
   });
 }
 
@@ -50,8 +54,11 @@ export async function clearAudio() {
   try {
     const db = await openDB();
     await new Promise((res, rej) => {
-      const r = tx(db, 'readwrite').clear();
-      r.onsuccess = res; r.onerror = () => rej(r.error);
+      const t = db.transaction(STORE, 'readwrite');
+      t.objectStore(STORE).clear();
+      t.oncomplete = res;
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error || new Error('IndexedDB 交易被中止'));
     });
     return true;
   } catch { return false; }

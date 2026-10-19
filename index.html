@@ -50,6 +50,7 @@
     </div>
     <div class="hdr-btns">
       <button id="vocalBtn" class="tgl on" title="V">人聲 <b>ON</b></button>
+      <button id="muteBtn" class="tgl" title="依聲部標註關掉某一邊的人聲（B）">雙聲全開</button>
       <button id="lyricBtn" class="tgl on" title="H">歌詞</button>
       <span class="fsz"><button id="fszDn" title="歌詞縮小（,）">A−</button><output id="fszVal">100%</output><button id="fszUp" title="歌詞放大（.）">A+</button></span>
       <button id="editLyricBtn" class="ghost" title="貼上 / 同步歌詞">歌詞編輯</button>
@@ -140,6 +141,7 @@
     <div><kbd>1</kbd>…<kbd>9</kbd> 直接跳段落</div>
     <div><kbd>Home</kbd> 回到開頭</div>
     <div><kbd>V</kbd> 人聲 開 / 關</div>
+    <div><kbd>B</kbd> 關男聲 / 關女聲 / 全開</div>
     <div><kbd>H</kbd> 歌詞顯示模式</div>
     <div><kbd>C</kbd> 或 <kbd>L</kbd> 循環 開 / 關</div>
     <div><kbd>[</kbd> <kbd>]</kbd> 設循環起 / 迄點</div>
@@ -158,6 +160,7 @@
     <li>有框選範圍時，按 <b>⚑ 標記困難</b> 會整段一起標記。</li>
     <li>框選後 <b>點擊框選範圍外</b> 的任一小節 = 取消循環與框選；框選中 <b>淡藍色</b> 代表循環未開、<b>黃色</b> 代表循環進行中。</li>
     <li>男女對唱可逐句、逐字標顏色：<b>歌詞編輯 → 聲部標註</b>（<span style="color:var(--c-m)">男藍</span>、<span style="color:var(--c-f)">女紅</span>、<span style="color:var(--c-b)">合唱綠</span>）。</li>
+    <li><b>關男聲 / 關女聲</b>（人聲鈕旁邊或 <kbd>B</kbd>）：唱到該聲部的段落會自動換成伴奏，合唱段落也算在內；沒標註的句子照常播原曲。</li>
     <li>標記與所有設定都存在這台電腦（瀏覽器 localStorage）。</li>
   </ul>
 </div>

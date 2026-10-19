@@ -178,6 +178,8 @@ export class Engine {
     this.send({ type: 'pitch', v: Math.pow(2, n / 12) });
   }
   setActive(i) { this.activeIdx = i; this.send({ type: 'active', i }); }
+  /** 依聲部標註要改放伴奏的 [start,end] 區間（秒，以原曲時間為基準） */
+  setMuteRanges(ranges) { this.muteRanges = ranges || []; this.send({ type: 'mute', ranges: this.muteRanges }); }
   setVolume(v) { this.send({ type: 'vol', v }); }
   setLoop(loop) { this.loop = loop; this.send({ type: 'loop', loop }); }
   setInstOffset(sec) {
