@@ -329,3 +329,46 @@ textarea{
   footer{gap:8px 12px}
   .time{margin-left:0}
 }
+
+/* ===================================================================
+   橫式寬螢幕：左欄小節格、右欄歌詞，段落列與總覽軸移到下方，
+   控制列維持最下面。小節一排 4 格（超寬螢幕 8 格）。
+   =================================================================== */
+@media (min-width:1000px) and (orientation:landscape){
+  :root{--sidew:clamp(240px,23vw,390px)}
+  #app{
+    grid-template-columns:var(--sidew) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr) auto auto auto;
+    grid-template-areas:
+      "hd    hd"
+      "bars  lyr"
+      "sec   sec"
+      "strip strip"
+      "ft    ft";
+  }
+  header{grid-area:hd}
+  #gridWrap{
+    grid-area:bars;max-height:none;height:100%;
+    padding:8px 10px 12px;border-right:1px solid var(--line)
+  }
+  #lyricWrap{grid-area:lyr}
+  #sectionBar{grid-area:sec;border-top:1px solid var(--line);border-bottom:0}
+  #stripWrap{grid-area:strip;border-top:1px solid var(--line)}
+  footer{grid-area:ft}
+
+  /* 一排 4 小節：每一排剛好是一個 4 小節樂句，不需要額外分隔 */
+  #grid{grid-template-columns:repeat(4,1fr)}
+  .cell:nth-child(4n+1){margin-left:0}
+
+  /* 右欄空間更大，少留點上下留白，一次看到更多句 */
+  #lyricPad{padding:15vh 2.5vw}
+  .lrow{max-width:none}
+}
+
+/* 超寬螢幕：左欄加寬，一排 8 小節（中間保留 4 小節分隔） */
+@media (min-width:1600px) and (orientation:landscape){
+  :root{--sidew:clamp(330px,25vw,520px)}
+  #grid{grid-template-columns:repeat(8,1fr)}
+  .cell:nth-child(4n+1){margin-left:5px}
+  .cell:nth-child(8n+1){margin-left:0}
+}

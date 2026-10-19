@@ -1094,10 +1094,11 @@ function tickBody() {
 
   // 播放頭
   if (ph) {
-    const wrap = $('#stripWrap');
+    // 由 canvas 本身的位置算，版型換欄位 / 改 padding 都不會跑掉
     const cv = $('#strip');
-    const x = 16 + (t / D) * cv.clientWidth;
-    ph.style.left = x.toFixed(1) + 'px';
+    ph.style.left = (cv.offsetLeft + (t / D) * cv.clientWidth).toFixed(1) + 'px';
+    ph.style.top = cv.offsetTop + 'px';
+    ph.style.height = cv.clientHeight + 'px';
   }
 
   // 時間
